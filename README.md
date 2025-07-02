@@ -1,15 +1,19 @@
 # About
+
 This tool will daily crawl https://arxiv.org and use LLMs to summarize them.
 
 Try in: https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/
 
 # Features
+
 - Using the free features of GitHub Actions and GitHub Pages, **no server is required**
-- Crawling data starts at dawn every day, and using DeepSeek to summarize. This period is during the off-peak discount period of DeepSeek, and it only costs about 0.2 CNY per day. 
+- Crawling data starts at dawn every day, and using DeepSeek to summarize. This period is during the off-peak discount period of DeepSeek, and it only costs about 0.2 CNY per day.
 - Provides a GitHub Pages front-end interface, uses LocalStorage to store **personalized preference** information (such as keywords and authors of interest), and highlights papers that matches the preferences.
 - GitHub Pages takes into account the display effects of both the computer and mobile devices, ensuring that papers can be easily reviewed on mobile devices
+- Provides **RSS feeds** for all papers and individual categories, allowing users to subscribe and receive updates in their favorite RSS readers
 
 # Screenshots
+
 - Main page. Highlight the interested keywords and authors.
 
 <img src="images/index.png" alt="main-page" width="800">
@@ -27,18 +31,19 @@ Try in: https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/
 <img src="images/single-date.png" alt="single-date" width="300">
 <img src="images/range-date.png" alt="range-date" width="300">
 
-- Statistics page (*in developing*). Help you analyze papers. Extract keywords for papers in the day(s) you select. In addition, if you select a range of dates, the keyword trends will be illustrated. (Fortunately, selecting a large range of papers **will not** stuck your browser to be stuck because this page will not show all papers. It may take a few seconds to process the keywords.)
+- Statistics page (_in developing_). Help you analyze papers. Extract keywords for papers in the day(s) you select. In addition, if you select a range of dates, the keyword trends will be illustrated. (Fortunately, selecting a large range of papers **will not** stuck your browser to be stuck because this page will not show all papers. It may take a few seconds to process the keywords.)
 
 <img src="images/keyword.png" alt="single-date" width="600">
 <img src="images/trends.png" alt="range-date" width="600">
 
-
 # How to use
+
 This repo will daily crawl arXiv papers about **cs.CV, cs.GR, cs.CL and cs.AI**, and use **DeepSeek** to summarize the papers in **Chinese**.
 If you wish to crawl other arXiv categories, use other LLMs, or other languages, please follow the instructions.
 Otherwise, you can directly use this repo in https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/. Please star it if you like :)
 
 **Instructions:**
+
 1. Fork this repo to your own account
 2. Go to: your-own-repo -> Settings -> Secrets and variables -> Actions
 3. Go to Secrets. Secrets are encrypted and used for sensitive data
@@ -55,6 +60,7 @@ Otherwise, you can directly use this repo in https://dw-dengwei.github.io/daily-
 9. Set up GitHub pages: Go to your own repo -> Settings -> Pages. In `Build and deployment`, set `Source="Deploy from a branch"`, `Branch="main", "/(root)"`. Wait for a few minutes, go to https://\<username\>.github.io/daily-arXiv-ai-enhanced/. Please see this [issue](https://github.com/dw-dengwei/daily-arXiv-ai-enhanced/issues/14) for more precise instructions.
 
 # To-do list
+
 - [x] Feature: Replace markdown with GitHub pages front-end.
 - [ ] Bugfix: In the statistics page, the number of papers for a keyword is not correct.
 - [ ] Bugfix: In the date picker, the date and week do not correspond.
@@ -62,7 +68,9 @@ Otherwise, you can directly use this repo in https://dw-dengwei.github.io/daily-
 - [x] Update instructions for fork users about how to use GitHub Pages.
 
 # Contributors
+
 Thanks to the following special contributors for this project!!!
+
 <table>
   <tbody>
     <tr>
@@ -77,7 +85,9 @@ Thanks to the following special contributors for this project!!!
 </table>
 
 # Acknowledgement
+
 We sincerely thank the following individuals and organizations for their promotion and support!!!
+
 <table>
   <tbody>
     <tr>
@@ -96,7 +106,6 @@ We sincerely thank the following individuals and organizations for their promoti
     </tr>
   </tbody>
 </table>
-
 
 # Star history
 

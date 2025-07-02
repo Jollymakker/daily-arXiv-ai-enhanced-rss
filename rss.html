@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>arXiv 论文 RSS 订阅</title>
+    <link rel="stylesheet" href="css/styles.css" />
+    <style>
+      .rss-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      .rss-list {
+        margin-top: 20px;
+      }
+      .rss-item {
+        margin-bottom: 15px;
+        padding: 15px;
+        border-radius: 5px;
+        background-color: #f5f5f5;
+      }
+      .rss-item h3 {
+        margin-top: 0;
+        color: #333;
+      }
+      .rss-item p {
+        margin-bottom: 10px;
+      }
+      .rss-link {
+        display: inline-block;
+        padding: 5px 10px;
+        background-color: #ff6600;
+        color: white;
+        text-decoration: none;
+        border-radius: 3px;
+      }
+      .rss-link:hover {
+        background-color: #e65c00;
+      }
+      .header-links {
+        margin-bottom: 20px;
+      }
+      .header-links a {
+        margin-right: 15px;
+        text-decoration: none;
+        color: #0366d6;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="rss-container">
+      <h1>arXiv 论文 RSS 订阅</h1>
+
+      <div class="header-links">
+        <a href="index.html">返回首页</a>
+        <a href="settings.html">设置</a>
+        <a href="statistic.html">统计</a>
+      </div>
+
+      <p>这里提供了arXiv论文的RSS订阅链接，您可以使用RSS阅读器订阅以下内容：</p>
+
+      <div class="rss-list">
+        <div class="rss-item">
+          <h3>所有分类</h3>
+          <p>包含所有爬取的arXiv论文</p>
+          <a class="rss-link" href="static/rss/all.xml" target="_blank"
+            >RSS订阅</a
+          >
+        </div>
+
+        <div class="rss-item">
+          <h3>计算机视觉 (cs.CV)</h3>
+          <p>仅包含计算机视觉领域的论文</p>
+          <a class="rss-link" href="static/rss/cs_CV.xml" target="_blank"
+            >RSS订阅</a
+          >
+        </div>
+
+        <div class="rss-item">
+          <h3>自然语言处理 (cs.CL)</h3>
+          <p>仅包含自然语言处理领域的论文</p>
+          <a class="rss-link" href="static/rss/cs_CL.xml" target="_blank"
+            >RSS订阅</a
+          >
+        </div>
+
+        <div class="rss-item">
+          <h3>人工智能 (cs.AI)</h3>
+          <p>仅包含人工智能领域的论文</p>
+          <a class="rss-link" href="static/rss/cs_AI.xml" target="_blank"
+            >RSS订阅</a
+          >
+        </div>
+      </div>
+
+      <div class="usage-info">
+        <h2>如何使用</h2>
+        <p>1. 点击上方的RSS订阅链接</p>
+        <p>2. 复制链接地址</p>
+        <p>3. 在您的RSS阅读器中添加该链接</p>
+        <p>4. 每天自动获取最新的arXiv论文摘要</p>
+      </div>
+    </div>
+  </body>
+</html>
