@@ -46,6 +46,10 @@ jobs:
         git config pull.rebase true
         git config rebase.autoStash true
         
+        # 清理可能导致问题的extraheader配置
+        git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader || true
+        git config --local --unset-all http.https://github.com/.extraheader || true
+        
         # 尝试推送，如果失败则拉取并重试
         for i in {1..3}; do
           echo "Push attempt $i"
