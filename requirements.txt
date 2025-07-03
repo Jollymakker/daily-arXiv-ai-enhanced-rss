@@ -10,4 +10,4 @@ openai>=1.0.0
 python-dotenv
 scrapy
 Twisted
-psycopg
+psycopg[binary]
