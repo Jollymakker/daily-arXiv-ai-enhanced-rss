@@ -7,8 +7,6 @@ from fastapi.responses import Response
 from feedgen.feed import FeedGenerator
 from typing import Optional
 from functools import lru_cache
-from apscheduler.schedulers.background import BackgroundScheduler  # 改用 APScheduler
-import subprocess
 from scheduler.index import DailyArXivProcessor
 
 # 从环境变量获取配置，便于Vercel部署
@@ -19,37 +17,8 @@ app = FastAPI(title="arXiv RSS API",
               description="提供arXiv论文的RSS订阅服务", 
               version="1.0.0")
 
-# 初始化 APScheduler
-scheduler = BackgroundScheduler()
 
-# 定义定时任务
-def my_daily_task():
-    print("✅ 定时任务执行：每 10 秒运行一次")
 
-@app.get('/do')
-def my_scheduled_task():
-    result = subprocess.run(["python", "-m","scheduler.index"])
-    if result.returncode == 0:
-        print("定时任务成功")
-    else:
-        print("定时任务失败")
-
-# 启动调度器（在 FastAPI 启动时运行）
-@app.on_event("startup")
-async def startup_event():
-    # scheduler.add_job(my_scheduled_task, "interval", seconds=10)
-    scheduler.add_job(
-        my_daily_task,
-        trigger="cron",
-        hour=3,     
-        minute=0    
-    )
-    scheduler.start()
-
-# 关闭调度器（在 FastAPI 关闭时运行）
-@app.on_event("shutdown")
-def shutdown_event():
-    scheduler.shutdown()
 
 # 获取可用分类
 @lru_cache(maxsize=1)

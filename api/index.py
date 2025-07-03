@@ -9,6 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # 导入rss_server中的应用和函数
 from rss_server import app, generate_rss_xml
+import subprocess
 
 # 配置CORS
 app.add_middleware(
@@ -23,6 +24,16 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"status": "ok", "message": "arXiv RSS API is running"}
+# 定义定时任务
+
+@app.get('/do')
+def my_scheduled_task():
+    result = subprocess.run(["python", "-m","scheduler.index"])
+    if result.returncode == 0:
+        print("定时任务成功")
+    else:
+        print("定时任务失败")
+
 
 # 添加API文档路由
 @app.get("/api-docs")
