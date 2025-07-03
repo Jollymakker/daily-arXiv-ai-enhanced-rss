@@ -29,7 +29,9 @@ class DatabaseManager:
                             ai_motivation TEXT,
                             ai_method TEXT,
                             ai_result TEXT,
-                            ai_conclusion TEXT
+                            ai_conclusion TEXT,
+                            inserted_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                         )
                     """)
                     conn.commit()
@@ -53,8 +55,8 @@ class DatabaseManager:
                             cur.execute("""
                                 INSERT INTO arxiv_papers (
                                     id, categories, pdf, abs, authors, title, comment, summary,
-                                    ai_tldr, ai_motivation, ai_method, ai_result, ai_conclusion
-                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                    ai_tldr, ai_motivation, ai_method, ai_result, ai_conclusion, inserted_at, updated_at
+                                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW(), NOW())
                                 ON CONFLICT (id) DO UPDATE SET
                                     title = EXCLUDED.title,
                                     summary = EXCLUDED.summary,
@@ -67,7 +69,8 @@ class DatabaseManager:
                                     ai_motivation = EXCLUDED.ai_motivation,
                                     ai_method = EXCLUDED.ai_method,
                                     ai_result = EXCLUDED.ai_result,
-                                    ai_conclusion = EXCLUDED.ai_conclusion
+                                    ai_conclusion = EXCLUDED.ai_conclusion,
+                                    updated_at = NOW()
                             """, (
                                 item.get('id'),
                                 item.get('categories'), 
