@@ -5,8 +5,6 @@ python-dateutil>=2.9.0
 pydantic>=2.6.0
 
 # Python dependencies
-langchain
-langchain-community
 python-dotenv
 scrapy
 Twisted

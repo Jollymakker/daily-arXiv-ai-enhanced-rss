@@ -5,13 +5,14 @@ import sys
 import dotenv
 import argparse
 
-import langchain_core.exceptions
-from langchain_community.chat_models import ChatOpenAI
-from langchain.prompts import (
-  ChatPromptTemplate,
-  SystemMessagePromptTemplate,
-  HumanMessagePromptTemplate,
-)
+import openai # 使用openai库
+# import langchain_core.exceptions # 移除langchain异常导入
+# from langchain_community.chat_models import ChatOpenAI # 移除langchain模型导入
+# from langchain.prompts import (
+#   ChatPromptTemplate,
+#   SystemMessagePromptTemplate,
+#   HumanMessagePromptTemplate,
+# ) # 移除langchain提示模板导入
 from ai.structure import Structure
 if os.path.exists('.env'):
     dotenv.load_dotenv()
@@ -36,29 +37,35 @@ def run_enhancement_process(data: list, language: str):
         print(f"无法读取AI模板或系统文件: {e}", file=sys.stderr)
         raise
 
-    llm = ChatOpenAI(model=model_name).with_structured_output(Structure, method="function_calling")
+    llm_client = openai.OpenAI() # 初始化OpenAI客户端
     print('Connect to:', model_name, file=sys.stderr)
-    prompt_template = ChatPromptTemplate.from_messages([
-        SystemMessagePromptTemplate.from_template(system_content),
-        HumanMessagePromptTemplate.from_template(template=template_content)
-    ])
-
-    chain = prompt_template | llm
+    
+    # 构建消息列表
+    messages_template = [
+        {"role": "system", "content": system_content},
+        {"role": "user", "content": template_content}
+    ]
 
     enhanced_data = []
     for idx, d in enumerate(data):
+        # 格式化用户内容
+        user_content = messages_template[1]["content"].format(language=language, content=d['summary'])
+        messages = [
+            messages_template[0],
+            {"role": "user", "content": user_content}
+        ]
+
         try:
-            response: Structure = chain.invoke({
-                "language": language,
-                "content": d['summary']
-            })
+            response: Structure = llm_client.chat.completions.create(
+                model=model_name,
+                messages=messages,
+                response_model=Structure # 直接指定Pydantic模型进行结构化输出
+            )
             d['AI'] = response.model_dump()
             enhanced_data.append(d)
-        except langchain_core.exceptions.OutputParserException as e:
+        # except langchain_core.exceptions.OutputParserException as e: # 移除langchain异常
+        except Exception as e: # 捕获更通用的异常，Pydantic验证错误也在此处理
             print(f"{d['id']} has an error: {e}", file=sys.stderr)
-            # 不将失败数据添加到 enhanced_data
-        except Exception as e:
-            print(f"处理 {d['id']} 时发生未知错误: {e}", file=sys.stderr)
             # 不将失败数据添加到 enhanced_data
 
         print(f"Finished {idx+1}/{len(data)}", file=sys.stderr)
