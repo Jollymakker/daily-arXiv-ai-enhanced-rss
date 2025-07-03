@@ -9,7 +9,7 @@ from typing import Optional
 from functools import lru_cache
 from apscheduler.schedulers.background import BackgroundScheduler  # 改用 APScheduler
 import subprocess
-from scheduler.index import DailyArXivPipeline
+from scheduler.index import DailyArXivProcessor
 
 # 从环境变量获取配置，便于Vercel部署
 DATA_DIR = os.environ.get('DATA_DIR', 'data')
@@ -26,8 +26,8 @@ scheduler = BackgroundScheduler()
 def my_daily_task():
     print("✅ 定时任务执行：每 10 秒运行一次")
 
+@app.get('/do')
 def my_scheduled_task():
-    print("✅ 定时任务执行：每 10 秒运行一次")
     result = subprocess.run(["python", "-m","scheduler.index"])
     if result.returncode == 0:
         print("定时任务成功")
@@ -37,7 +37,7 @@ def my_scheduled_task():
 # 启动调度器（在 FastAPI 启动时运行）
 @app.on_event("startup")
 async def startup_event():
-    scheduler.add_job(my_scheduled_task, "interval", seconds=10)
+    # scheduler.add_job(my_scheduled_task, "interval", seconds=10)
     scheduler.add_job(
         my_daily_task,
         trigger="cron",
