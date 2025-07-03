@@ -36,16 +36,15 @@ class DailyArXivProcessor:
             # 1. 运行Scrapy爬虫（内存捕获）
             raw_data = self._run_scrapy_in_memory()
             # 2. AI增强处理（内存数据）
-            # enhanced_data = run_enhancement_process(raw_data, self.language)
+            enhanced_data = run_enhancement_process(raw_data)
             
             # 3. 存储到数据库
             if self.db_manager.connect_and_create_table():
-                self.db_manager.insert_data(raw_data)
-
-            self.logger.info(f"--- 内存处理流程执行完毕，共抓取 {len(raw_data)} 条，增强 {len(raw_data)} 条 ---")
+                self.db_manager.insert_data(enhanced_data)
+            self.logger.info(f"--- 执行完毕，共抓取 {len(raw_data)} 条，增强 {len(raw_data)} 条 ---")
             return True
         except Exception as e:
-            self.logger.error(f"处理失败: {e}")
+            print(e)
             return False
 
     def _run_scrapy_in_memory(self):

@@ -8,6 +8,8 @@ from feedgen.feed import FeedGenerator
 from typing import Optional
 from functools import lru_cache
 from scheduler.index import DailyArXivProcessor
+from api.database import DatabaseManager
+from utils.cache import memory_cache # 从新文件导入缓存实例
 
 # 从环境变量获取配置，便于Vercel部署
 DATA_DIR = os.environ.get('DATA_DIR', 'data')
@@ -17,8 +19,7 @@ app = FastAPI(title="arXiv RSS API",
               description="提供arXiv论文的RSS订阅服务", 
               version="1.0.0")
 
-
-
+db_manager = DatabaseManager()
 
 # 获取可用分类
 @lru_cache(maxsize=1)
@@ -27,13 +28,6 @@ def get_allowed_categories():
     if not cat_env:
         return set()
     return set([c.strip() for c in cat_env.split(',') if c.strip()])
-
-def get_jsonl_by_date(date_str: str, lang: str = 'Chinese'):
-    fname = f"{date_str}_AI_enhanced_{lang}.jsonl"
-    path = os.path.join(DATA_DIR, fname)
-    if not os.path.exists(path):
-        raise FileNotFoundError(f'未找到数据文件: {path}')
-    return path
 
 def format_rss_time(dt_str):
     # 处理ISO格式的时间字符串
@@ -46,14 +40,6 @@ def format_rss_time(dt_str):
     return dt.replace(tzinfo=timezone.utc)
 
 def build_description(item):
-    """Build a scholarly RSS description with simple HTML tags
-    
-    Args:
-        item: Dictionary containing paper metadata and AI analysis
-        
-    Returns:
-        str: Formatted description with basic HTML tags
-    """
     # Extract data
     ai = item.get('AI', {})
     title = item.get('title', 'Untitled')
@@ -101,38 +87,49 @@ def build_description(item):
     # Join and remove empty lines
     return ''.join(filter(None, description))
 
-def load_items(date_str: str, lang: str = 'Chinese'):
-    jsonl_path = get_jsonl_by_date(date_str, lang)
-    with open(jsonl_path, 'r', encoding='utf-8') as f:
-        return [json.loads(line) for line in f]
+def load_items(date_str: str, category: Optional[str] = None) -> list:
+    # 尝试从缓存中获取数据
+    cached_items = memory_cache.get(date_str)
+    if cached_items is not None:
+        return cached_items
+
+    # 如果缓存中没有，则从数据库获取
+    items = db_manager.get_papers_by_date(date_str, category)
+    if not items:
+        # 如果数据库中没有数据，也将其缓存为空列表以避免重复查询
+        memory_cache.set(date_str, [])
+        return []
+    
+    # 将获取的数据存入缓存
+    memory_cache.set(date_str, items)
+    return items
 
 def get_recent_dates(n=30):
     today = datetime.now()
     return [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(n)]
 
-def load_items_multi(dates, lang: str = 'Chinese'):
+def load_items_multi(dates):
     all_items = []
     seen_ids = set()
     for date_str in dates:
-        try:
-            items = load_items(date_str, lang)
-            for item in items:
-                pid = item.get('id')
-                if pid and pid not in seen_ids:
-                    item["published"] = date_str
-                    all_items.append(item)
-                    seen_ids.add(pid)
-        except FileNotFoundError:
-            continue
+        # 从数据库/缓存获取数据
+        items = load_items(date_str)
+        for item in items:
+            pid = item.get('id')
+            if pid and pid not in seen_ids:
+                all_items.append(item)
+                seen_ids.add(pid)
     return all_items
 
 @lru_cache(maxsize=128)
-def generate_rss_xml(cat: Optional[str], date_str: Optional[str], lang: str = 'Chinese'):
-    if date_str:
-        items = load_items(date_str, lang)
-    else:
-        dates = get_recent_dates(30)
-        items = load_items_multi(dates, lang)
+def generate_rss_xml(cat: Optional[str], day: int):
+    dates = get_recent_dates(day)
+    items = load_items_multi(dates)
+        
+    
+    if not items: # 如果没有获取到任何项目，抛出HTTP 404
+        raise HTTPException(status_code=404, detail=f'未找到 {date_str} 或最近{day}天的论文。')
+
     fg = FeedGenerator()
     if cat is None:
         fg.title(f'arXiv 每日论文')
@@ -148,6 +145,11 @@ def generate_rss_xml(cat: Optional[str], date_str: Optional[str], lang: str = 'C
             cats = item.get('categories')
             if cats and isinstance(cats, list) and cat in cats:
                 feed_items.append(item)
+    
+    # 如果指定了类别但没有找到相关项目，也应该抛出404
+    if cat is not None and not feed_items:
+        raise HTTPException(status_code=404, detail=f'未找到分类 {cat} 的论文。')
+
     for item in feed_items:
         fe = fg.add_entry()
         ai = item.get('AI', {})
@@ -164,31 +166,32 @@ def generate_rss_xml(cat: Optional[str], date_str: Optional[str], lang: str = 'C
         if 'categories' in item and isinstance(item['categories'], list):
             for c in item['categories']:
                 fe.category(term=c)
-        # 确保日期有时区信息
-        published_date = item.get('published')
+        published_date = item.get('updated_at')
         if published_date:
-            fe.pubDate(format_rss_time(published_date))
+            utc_published_date = published_date.astimezone(timezone.utc)
+            fe.pubDate(utc_published_date)
         fe.guid(item.get('id', ''))
     return fg.rss_str(pretty=True)
 
-@app.get('/feed', summary="获取所有分类的RSS源", response_description="RSS XML内容")
-def rss_all(date: Optional[str] = Query(None, description="指定日期 (YYYY-MM-DD)，默认为最近30天"), 
-           lang: Optional[str] = Query(DEFAULT_LANGUAGE, description="语言设置，默认为环境变量LANGUAGE或Chinese")):
+@app.get('/feed/day/{day}', summary="获取所有分类的RSS源", response_description="RSS XML内容")
+def rss_all(day: int):
     try:
-        xml = generate_rss_xml(None, date, lang)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return Response(content=xml, media_type='application/xml')
+        xml = generate_rss_xml(None, day)
+        return Response(content=xml, media_type="application/xml")
+    except HTTPException as e:
+        raise e # 重新抛出HTTPException
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成RSS失败: {e}")
 
-@app.get('/feed/{cat}', summary="获取特定分类的RSS源", response_description="RSS XML内容")
-def rss_cat(cat: str, 
-           date: Optional[str] = Query(None, description="指定日期 (YYYY-MM-DD)，默认为最近30天"), 
-           lang: Optional[str] = Query(DEFAULT_LANGUAGE, description="语言设置，默认为环境变量LANGUAGE或Chinese")):
-    allowed = get_allowed_categories()
-    if allowed and cat not in allowed:
-        raise HTTPException(status_code=404, detail=f'分类 {cat} 未被允许')
+@app.get('/feed/cat/{cat}', summary="获取特定分类的RSS源", response_description="RSS XML内容")
+def rss_cat(cat: str):
+    allowed_categories = get_allowed_categories()
+    if cat not in allowed_categories:
+        raise HTTPException(status_code=404, detail=f"不支持的分类: {cat}. 可用分类: {', '.join(allowed_categories) if allowed_categories else '无'}")
     try:
-        xml = generate_rss_xml(cat, date, lang)
-    except FileNotFoundError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-    return Response(content=xml, media_type='application/xml')
+        xml = generate_rss_xml(cat, 7)
+        return Response(content=xml, media_type="application/xml")
+    except HTTPException as e:
+        raise e # 重新抛出HTTPException
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"生成RSS失败: {e}")

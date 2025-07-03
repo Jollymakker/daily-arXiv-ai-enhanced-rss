@@ -1,6 +1,7 @@
 import os
 import psycopg
 import logging
+from typing import Optional
 
 class DatabaseManager:
     def __init__(self):
@@ -95,4 +96,54 @@ class DatabaseManager:
             return inserted_count
         except Exception as e:
             self.logger.error(f"数据库操作失败: {e}")
-            return 0 
+            return 0
+
+    def get_papers_by_date(self, date_str: str, category: Optional[str] = None) -> list:
+        if not self.conn_string:
+            self.logger.error("数据库连接字符串无效，无法获取数据。")
+            return []
+        
+        papers = []
+        try:
+            with psycopg.connect(self.conn_string) as conn:
+                with conn.cursor() as cur:
+                    # Set the session timezone to Asia/Shanghai (Beijing time)
+                    cur.execute("SET TIME ZONE 'Asia/Shanghai'")
+
+                    # 构建查询
+                    query = """
+                        SELECT id, categories, pdf, abs, authors, title, comment, summary, updated_at,
+                               ai_tldr, ai_motivation, ai_method, ai_result, ai_conclusion
+                        FROM arxiv_papers
+                        WHERE inserted_at::date = %s
+                    """
+                    params = [date_str]
+
+                    if category:
+                        query += " AND %s = ANY(categories)"
+                        params.append(category)
+                    
+                    cur.execute(query, params)
+                    columns = [desc[0] for desc in cur.description]
+                    for row in cur.fetchall():
+                        item = dict(zip(columns, row))
+                        # 确保 categories 是列表，并处理 AI 字段
+                        if item.get('categories') and not isinstance(item['categories'], list):
+                            item['categories'] = item['categories'].strip('{}').split(',') if item['categories'] else []
+                        elif item.get('categories') is None:
+                            item['categories'] = []
+                        
+                        ai_data = {
+                            'tldr': item.pop('ai_tldr'),
+                            'motivation': item.pop('ai_motivation'),
+                            'method': item.pop('ai_method'),
+                            'result': item.pop('ai_result'),
+                            'conclusion': item.pop('ai_conclusion')
+                        }
+                        item['AI'] = ai_data
+                        papers.append(item)
+            self.logger.info(f"从数据库获取 {len(papers)} 条数据，日期: {date_str}, 类别: {category}")
+            return papers
+        except Exception as e:
+            self.logger.error(f"从数据库获取数据失败: {e}")
+            return [] 
