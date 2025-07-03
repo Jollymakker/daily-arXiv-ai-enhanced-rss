@@ -10,4 +10,4 @@ langchain-community
 python-dotenv
 scrapy
 Twisted
-psycopg[binary]
+psycopg
