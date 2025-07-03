@@ -12,6 +12,14 @@ Try in: https://dw-dengwei.github.io/daily-arXiv-ai-enhanced/
 - GitHub Pages takes into account the display effects of both the computer and mobile devices, ensuring that papers can be easily reviewed on mobile devices
 - Provides **RSS feeds** for all papers and individual categories, allowing users to subscribe and receive updates in their favorite RSS readers
 
+## 特性
+
+- 🚀 **GitHub Actions & Vercel**: 自动化爬取和API部署，无需自建服务器
+- 💰 **成本效益**: 使用DeepSeek模型，比OpenAI便宜10倍
+- 🔍 **个性化**: 自定义关注的arXiv分类
+- 📱 **移动友好**: 响应式设计，完美支持移动设备
+- 📡 **RSS API**: 通过Vercel部署的API提供RSS订阅服务
+
 # Screenshots
 
 - Main page. Highlight the interested keywords and authors.
@@ -59,6 +67,32 @@ Otherwise, you can directly use this repo in https://dw-dengwei.github.io/daily-
 8. You can manually click **Run workflow** to test if it works well (it may take about one hour). By default, this action will automatically run every day. You can modify it in `.github/workflows/run.yml`
 9. Set up GitHub pages: Go to your own repo -> Settings -> Pages. In `Build and deployment`, set `Source="Deploy from a branch"`, `Branch="main", "/(root)"`. Wait for a few minutes, go to https://\<username\>.github.io/daily-arXiv-ai-enhanced/. Please see this [issue](https://github.com/dw-dengwei/daily-arXiv-ai-enhanced/issues/14) for more precise instructions.
 
+# Vercel部署说明
+
+本项目现已支持通过Vercel部署RSS API服务，提供更稳定的RSS订阅体验。
+
+## 部署步骤
+
+1. 在Vercel上注册账号并连接GitHub仓库
+2. 导入你fork的daily-arXiv-ai-enhanced仓库
+3. 配置环境变量：
+   - `DATA_DIR`: 数据目录路径，默认为 `data`
+   - `LANGUAGE`: 语言设置，默认为 `Chinese`
+4. 点击部署按钮
+
+部署完成后，你可以通过以下API端点访问RSS服务：
+
+- `/feed` - 获取所有分类的RSS源
+- `/feed/{cat}` - 获取特定分类的RSS源，如 `/feed/cs.CL`
+
+可选参数：
+- `date` - 指定日期，格式为YYYY-MM-DD
+- `lang` - 指定语言，默认为Chinese
+
+## API文档
+
+访问 `/api-docs` 端点可获取完整的API文档。
+
 # To-do list
 
 - [x] Feature: Replace markdown with GitHub pages front-end.
@@ -66,6 +100,7 @@ Otherwise, you can directly use this repo in https://dw-dengwei.github.io/daily-
 - [ ] Bugfix: In the date picker, the date and week do not correspond.
 - [ ] Feature: Extract keywords with DeepSeek.
 - [x] Update instructions for fork users about how to use GitHub Pages.
+- [x] Feature: 支持通过Vercel部署RSS API服务
 
 # Contributors
 

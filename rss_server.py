@@ -8,9 +8,13 @@ from feedgen.feed import FeedGenerator
 from typing import Optional
 from functools import lru_cache
 
-DATA_DIR = 'data'
+# 从环境变量获取配置，便于Vercel部署
+DATA_DIR = os.environ.get('DATA_DIR', 'data')
+DEFAULT_LANGUAGE = os.environ.get('LANGUAGE', 'Chinese')
 
-app = FastAPI()
+app = FastAPI(title="arXiv RSS API", 
+              description="提供arXiv论文的RSS订阅服务", 
+              version="1.0.0")
 
 # 获取可用分类
 @lru_cache(maxsize=1)
@@ -163,16 +167,19 @@ def generate_rss_xml(cat: Optional[str], date_str: Optional[str], lang: str = 'C
         fe.guid(item.get('id', ''))
     return fg.rss_str(pretty=True)
 
-@app.get('/feed')
-def rss_all(date: Optional[str] = Query(None), lang: Optional[str] = Query('Chinese')):
+@app.get('/feed', summary="获取所有分类的RSS源", response_description="RSS XML内容")
+def rss_all(date: Optional[str] = Query(None, description="指定日期 (YYYY-MM-DD)，默认为最近30天"), 
+           lang: Optional[str] = Query(DEFAULT_LANGUAGE, description="语言设置，默认为环境变量LANGUAGE或Chinese")):
     try:
         xml = generate_rss_xml(None, date, lang)
     except FileNotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     return Response(content=xml, media_type='application/xml')
 
-@app.get('/feed/{cat}')
-def rss_cat(cat: str, date: Optional[str] = Query(None), lang: Optional[str] = Query('Chinese')):
+@app.get('/feed/{cat}', summary="获取特定分类的RSS源", response_description="RSS XML内容")
+def rss_cat(cat: str, 
+           date: Optional[str] = Query(None, description="指定日期 (YYYY-MM-DD)，默认为最近30天"), 
+           lang: Optional[str] = Query(DEFAULT_LANGUAGE, description="语言设置，默认为环境变量LANGUAGE或Chinese")):
     allowed = get_allowed_categories()
     if allowed and cat not in allowed:
         raise HTTPException(status_code=404, detail=f'分类 {cat} 未被允许')

@@ -15,15 +15,7 @@ python enhance.py --data ../data/${today}.jsonl
 
 # ls data/*.jsonl | sed 's|data/||' > assets/file-list.txt
 
-# 生成静态RSS文件
+# 不再生成静态RSS文件，改为使用Vercel部署API
 cd ..
-
-# 使用generate_rss.py脚本生成RSS文件
-python generate_rss.py --output-dir static/rss
-
-# 在Linux环境下设置权限
-if [ "$(uname)" = "Linux" ]; then
-  chmod -R 755 static
-fi
 
 echo "--- 每日 arXiv 流程执行完毕 ---"
