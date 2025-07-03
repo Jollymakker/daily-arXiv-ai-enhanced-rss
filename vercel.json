@@ -11,12 +11,5 @@
       "src": "/(.*)",
       "dest": "api/index.py"
     }
-  ],
-  "env": {
-    "DATA_DIR": "data",
-    "LANGUAGE": "Chinese",
-    "OPENAI_API_KEY": "sk-8b0d4129c95b45358103fa35e83fd4f9",
-    "MODEL_NAME": "deepseek-chat",
-    "OPENAI_BASE_URL": "https://api.deepseek.com"
-  }
+  ]
 }
