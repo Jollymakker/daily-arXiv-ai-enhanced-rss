@@ -6,6 +6,7 @@ python-dateutil>=2.9.0
 pydantic>=2.6.0
 
 # Python dependencies
+openai>=1.0.0
 python-dotenv
 scrapy
 Twisted
