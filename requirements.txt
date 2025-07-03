@@ -3,3 +3,12 @@ uvicorn>=0.27.0
 feedgen>=0.9.0
 python-dateutil>=2.9.0
 pydantic>=2.6.0
+
+# Python dependencies
+langchain
+langchain-community
+python-dotenv
+scrapy
+scrapy-playwright
+Twisted
+psycopg[binary]
