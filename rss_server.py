@@ -42,9 +42,13 @@ def format_rss_time(dt_str):
 def build_description(item):
     # Extract data
     ai = item.get('AI', {})
-    title = item.get('title', 'Untitled')
-    authors = '; '.join(item.get('authors', ['Anonymous']))
-    categories = ' | '.join(item.get('categories', []))
+    title = str(item.get('title', 'Untitled'))
+
+    authors_list = item.get('authors')
+    authors = '; '.join(str(a) for a in authors_list) if authors_list else 'Anonymous'
+
+    categories_list = item.get('categories')
+    categories = ' | '.join(str(c) for c in categories_list) if categories_list else ''
     
     # Build description with simple tags
     description = [
@@ -53,30 +57,31 @@ def build_description(item):
         f"<b>Categories:</b> &nbsp;{categories}<br>" if categories else "",
         "<br>",
         "<b>Research Motivation:</b>&nbsp;",
-        ai.get('motivation', 'Not provided') + "<br>",
+        str(ai.get('motivation', 'Not provided')) + "<br>",
         "<br>",
         "<b>Methodology:</b>&nbsp;",
-        ai.get('method', 'Not described') + "<br>",
+        str(ai.get('method', 'Not described')) + "<br>",
         "<br>",
         "<b>Key Results:</b>&nbsp;",
-        ai.get('result', 'Not available') + "<br>",
+        str(ai.get('result', 'Not available')) + "<br>",
         "<br>",
         "<b>Conclusions:</b>&nbsp;",
-        ai.get('conclusion', 'None drawn') + "<br>",
+        str(ai.get('conclusion', 'None drawn')) + "<br>",
         "<br>",
         "<b>Abstract:</b>&nbsp;",
-        item.get('summary', 'No abstract available') + "<br>"
+        str(item.get('summary', 'No abstract available')) + "<br>"
     ]
     
     # Add comment if exists
-    if item.get('comment'):
+    comment_text = item.get('comment')
+    if comment_text is not None:
         description.extend([
             "<br>",
             "<b>Editorial Note:</b>&nbsp;",
-            item['comment'] + "<br>"
+            str(comment_text) + "<br>"
         ])
     
-    pdf_url = item.get('pdf', '')
+    pdf_url = str(item.get('pdf', ''))
     if pdf_url:
         description.extend([
             "<br>",
@@ -128,7 +133,7 @@ def generate_rss_xml(cat: Optional[str], day: int):
         
     
     if not items: # 如果没有获取到任何项目，抛出HTTP 404
-        raise HTTPException(status_code=404, detail=f'未找到 {date_str} 或最近{day}天的论文。')
+        raise HTTPException(status_code=404, detail=f'未找到最近{day}天的论文。')
 
     fg = FeedGenerator()
     if cat is None:
@@ -162,10 +167,10 @@ def generate_rss_xml(cat: Optional[str], day: int):
         fe.title(zh if zh else item.get('title', ''))
         fe.link(href=item.get('abs', ''))
         fe.description(build_description(item))
-        fe.author({'name': ', '.join(item.get('authors', []))})
+        fe.author({'name': ', '.join(str(a) for a in item.get('authors', []))})
         if 'categories' in item and isinstance(item['categories'], list):
             for c in item['categories']:
-                fe.category(term=c)
+                fe.category(term=str(c))
         published_date = item.get('updated_at')
         if published_date:
             utc_published_date = published_date.astimezone(timezone.utc)
@@ -173,23 +178,14 @@ def generate_rss_xml(cat: Optional[str], day: int):
         fe.guid(item.get('id', ''))
     return fg.rss_str(pretty=True)
 
-@app.get('/feed/day/{day}', summary="获取所有分类的RSS源", response_description="RSS XML内容")
-def rss_all(day: int):
-    try:
-        xml = generate_rss_xml(None, day)
-        return Response(content=xml, media_type="application/xml")
-    except HTTPException as e:
-        raise e # 重新抛出HTTPException
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"生成RSS失败: {e}")
-
-@app.get('/feed/cat/{cat}', summary="获取特定分类的RSS源", response_description="RSS XML内容")
-def rss_cat(cat: str):
+@app.get('/feed', summary="获取统一的RSS源（按天或按分类）", response_description="RSS XML内容")
+def rss_unified(day: int = Query(1, description="获取最近的天数"), 
+                cat: Optional[str] = Query(None, description="按分类筛选")):
     allowed_categories = get_allowed_categories()
-    if cat not in allowed_categories:
+    if cat and cat not in allowed_categories:
         raise HTTPException(status_code=404, detail=f"不支持的分类: {cat}. 可用分类: {', '.join(allowed_categories) if allowed_categories else '无'}")
     try:
-        xml = generate_rss_xml(cat, 7)
+        xml = generate_rss_xml(cat, day)
         return Response(content=xml, media_type="application/xml")
     except HTTPException as e:
         raise e # 重新抛出HTTPException
