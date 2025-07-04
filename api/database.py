@@ -17,6 +17,7 @@ class DatabaseManager:
             with psycopg.connect(self.conn_string) as conn:
                 with conn.cursor() as cur:
                     cur.execute("SET TIME ZONE 'Asia/Shanghai'")
+                    # 创建 arxiv_papers 表
                     cur.execute("""
                         CREATE TABLE IF NOT EXISTS arxiv_papers (
                             id TEXT PRIMARY KEY,
@@ -36,8 +37,26 @@ class DatabaseManager:
                             updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
                         )
                     """)
+                    # 创建 daily_movie 表
+                    cur.execute("""
+                        CREATE TABLE IF NOT EXISTS daily_movie (
+                            mov_id TEXT PRIMARY KEY,
+                            gettime BIGINT,
+                            daily_word TEXT,
+                            mov_title TEXT,
+                            mov_text TEXT,
+                            mov_link TEXT,
+                            mov_rating TEXT,
+                            mov_director TEXT,
+                            mov_year INT,
+                            mov_area TEXT,
+                            mov_type TEXT[],
+                            mov_pic TEXT,
+                            mov_intro TEXT
+                        )
+                    """)
                     conn.commit()
-                    self.logger.info("数据库表 'arxiv_papers' 已就绪。")
+                    self.logger.info("数据库表 'arxiv_papers' 和 'daily_movie' 已就绪。")
             return True
         except Exception as e:
             self.logger.error(f"数据库连接或创建表失败: {e}")
@@ -148,4 +167,67 @@ class DatabaseManager:
             return papers
         except Exception as e:
             self.logger.error(f"从数据库获取数据失败: {e}")
+            return [] 
+
+    def insert_daily_movie(self, data: dict):
+        if not self.conn_string:
+            self.logger.error("数据库连接字符串无效，跳过电影数据插入。")
+            return 0
+        try:
+            with psycopg.connect(self.conn_string) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SET TIME ZONE 'Asia/Shanghai'")
+                    cur.execute("""
+                        INSERT INTO daily_movie (
+                            mov_id, gettime, daily_word, mov_title, mov_text, mov_link, mov_rating, mov_director, mov_year, mov_area, mov_type, mov_pic, mov_intro
+                        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (mov_id) DO UPDATE SET
+                            gettime = EXCLUDED.gettime,
+                            daily_word = EXCLUDED.daily_word,
+                            mov_title = EXCLUDED.mov_title,
+                            mov_text = EXCLUDED.mov_text,
+                            mov_link = EXCLUDED.mov_link,
+                            mov_rating = EXCLUDED.mov_rating,
+                            mov_director = EXCLUDED.mov_director,
+                            mov_year = EXCLUDED.mov_year,
+                            mov_area = EXCLUDED.mov_area,
+                            mov_type = EXCLUDED.mov_type,
+                            mov_pic = EXCLUDED.mov_pic,
+                            mov_intro = EXCLUDED.mov_intro
+                    """,
+                    (
+                        data.get('mov_id'),
+                        data.get('gettime'),
+                        data.get('daily_word'),
+                        data.get('mov_title'),
+                        data.get('mov_text'),
+                        data.get('mov_link'),
+                        data.get('mov_rating'),
+                        data.get('mov_director'),
+                        data.get('mov_year'),
+                        data.get('mov_area'),
+                        data.get('mov_type'),
+                        data.get('mov_pic'),
+                        data.get('mov_intro')
+                    ))
+                conn.commit()
+            self.logger.info(f"电影数据 {data.get('mov_id')} 插入/更新成功。")
+            return 1
+        except Exception as e:
+            self.logger.error(f"插入电影数据失败: {e}")
+            return 0
+
+    def get_all_daily_movies(self):
+        if not self.conn_string:
+            self.logger.error("数据库连接字符串无效，无法获取电影数据。"); return []
+        try:
+            with psycopg.connect(self.conn_string) as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SET TIME ZONE 'Asia/Shanghai'")
+                    cur.execute("SELECT * FROM daily_movie ORDER BY gettime DESC")
+                    rows = cur.fetchall()
+                    columns = [desc[0] for desc in cur.description]
+                    return [dict(zip(columns, row)) for row in rows]
+        except Exception as e:
+            self.logger.error(f"获取全部电影数据失败: {e}")
             return [] 

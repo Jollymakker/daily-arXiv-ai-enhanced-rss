@@ -10,6 +10,7 @@ from functools import lru_cache
 from scheduler.index import DailyArXivProcessor
 from api.database import DatabaseManager
 from utils.cache import memory_cache # 从新文件导入缓存实例
+from ai.movie_daily import generate_movie_rss, router as movie_router
 
 # 从环境变量获取配置，便于Vercel部署
 DATA_DIR = os.environ.get('DATA_DIR', 'data')
@@ -20,6 +21,9 @@ app = FastAPI(title="arXiv RSS API",
               version="1.0.0")
 
 db_manager = DatabaseManager()
+
+# 确保数据库表自动创建
+DatabaseManager().connect_and_create_table()
 
 # 获取可用分类
 @lru_cache(maxsize=1)
@@ -219,3 +223,13 @@ def rss_unified(day: int = Query(1, description="获取最近的天数"),
         raise e # 重新抛出HTTPException
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"生成RSS失败: {e}")
+
+
+@app.get('/movie_feed', summary="获取每日电影RSS", response_description="RSS XML内容")
+def movie_feed():
+    xml = generate_movie_rss()
+    if not xml:
+        raise HTTPException(status_code=404, detail="暂无每日电影数据")
+    return Response(content=xml, media_type="application/xml")
+
+app.include_router(movie_router) 

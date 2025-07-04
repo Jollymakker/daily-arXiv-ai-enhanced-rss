@@ -16,6 +16,10 @@
     {
       "path": "/do",
       "schedule": "30 0 * * *" 
+    },
+    {
+      "path": "/fetch_movie_daily",
+      "schedule": "30 0 * * *"
     }
   ]
 }
