@@ -44,8 +44,6 @@ def build_description(item):
     ai = item.get('AI', {})
     title = str(item.get('title', 'Untitled'))
 
-    authors_list = item.get('authors')
-    authors = '; '.join(str(a) for a in authors_list) if authors_list else 'Anonymous'
 
     categories_list = item.get('categories')
     categories = ' | '.join(str(c) for c in categories_list) if categories_list else ''
@@ -53,7 +51,6 @@ def build_description(item):
     # Build description with simple tags
     description = [
         f"<b>Title:</b> &nbsp;{title}<br>",
-        f"<b>Authors:</b>&nbsp; {authors}<br>",
         f"<b>Categories:</b> &nbsp;{categories}<br>" if categories else "",
         "<br>",
         "<b>Research Motivation:</b>&nbsp;",
@@ -171,10 +168,13 @@ def generate_rss_xml(cat: Optional[str], day: int, keys: Optional[str] = None):
             continue
         if not zh:
             zh = '\n'.join([f"{k}: {v}" for k, v in ai.items()])
+        authors_list = item.get('authors')
+        authors = '; '.join(str(a) for a in authors_list) if authors_list else 'Anonymous'
+        fe.author(dict(name=authors, email=""))
         fe.title(zh if zh else item.get('title', ''))
         fe.link(href=item.get('abs', ''))
         fe.description(build_description(item))
-        fe.author({'name': ', '.join(str(a) for a in item.get('authors', []))})
+        print(authors)
         if 'categories' in item and isinstance(item['categories'], list):
             for c in item['categories']:
                 fe.category(term=str(c))
