@@ -3,10 +3,13 @@ from scrapy.utils.reactor import install_reactor
 install_reactor("twisted.internet.asyncioreactor.AsyncioSelectorReactor")
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import logging
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor,defer
+from concurrent.futures import ThreadPoolExecutor
+
+import arxiv
 
 from daily_arxiv.daily_arxiv.spiders.arxiv import ArxivSpider
 from daily_arxiv.daily_arxiv.pipelines import DailyArxivPipeline
@@ -27,21 +30,45 @@ class DailyArXivProcessor:
             level=logging.INFO,
             format='%(asctime)s - %(levelname)s - %(message)s'
         )
+        # 抑制arxiv库的INFO级别日志
+        logging.getLogger('arxiv').setLevel(logging.WARNING)
         return logging.getLogger(__name__)
 
+    def _fetch_paper_details(self, item):
+        search = arxiv.Search(
+            id_list=[item["id"]],
+        )
+        paper = next(arxiv.Client().results(search))
+        item["authors"] = [a.name for a in paper.authors]
+        item["title"] = paper.title
+        item["categories"] = paper.categories
+        item["comment"] = paper.comment
+        item["summary"] = paper.summary
+        return item
+
     def run(self):
-        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        # 定义北京时区 (UTC+8)
+        beijing_tz = timezone(timedelta(hours=8))
+        # 获取当前北京时间并格式化日期
+        today = datetime.now(beijing_tz).strftime("%Y-%m-%d")
         self.logger.info(f"--- 开始 {today} arXiv 处理流程 ---")
         try:
             # 1. 运行Scrapy爬虫（内存捕获）
             raw_data = self._run_scrapy_in_memory()
-            # 2. AI增强处理（内存数据）
-            enhanced_data = run_enhancement_process(raw_data)
             
-            # 3. 存储到数据库
+            # 2. 并行获取论文详细信息
+            self.logger.info(f"--- 开始并行获取论文详细信息 ---")
+            with ThreadPoolExecutor(max_workers=20) as executor:
+                detailed_data = list(executor.map(self._fetch_paper_details, raw_data))
+            self.logger.info(f"--- 论文详细信息获取完毕，共 {len(detailed_data)} 条 ---")
+
+            # 3. AI增强处理（内存数据）
+            enhanced_data = run_enhancement_process(detailed_data)
+            
+            # 4. 存储到数据库
             if self.db_manager.connect_and_create_table():
                 self.db_manager.insert_data(enhanced_data)
-            self.logger.info(f"--- 执行完毕，共抓取 {len(raw_data)} 条，增强 {len(raw_data)} 条 ---")
+            self.logger.info(f"--- 执行完毕，共抓取 {len(raw_data)} 条，增强 {len(enhanced_data)} 条 ---")
             return True
         except Exception as e:
             print(e)

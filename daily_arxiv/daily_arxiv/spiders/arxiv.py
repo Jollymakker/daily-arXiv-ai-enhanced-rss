@@ -67,7 +67,7 @@ class ArxivSpider(scrapy.Spider):
                     }
             else:
                 # 如果无法获取分类信息，记录警告但仍然返回论文（保持向后兼容）
-                self.logger.warning(f"Could not extract categories for paper {arxiv_id}, including anyway")
+                # self.logger.warning(f"Could not extract categories for paper {arxiv_id}, including anyway")
                 yield {
                     "id": arxiv_id,
                     "categories": [],

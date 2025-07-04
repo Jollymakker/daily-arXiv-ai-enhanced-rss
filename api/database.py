@@ -16,6 +16,7 @@ class DatabaseManager:
         try:
             with psycopg.connect(self.conn_string) as conn:
                 with conn.cursor() as cur:
+                    cur.execute("SET TIME ZONE 'Asia/Shanghai'")
                     cur.execute("""
                         CREATE TABLE IF NOT EXISTS arxiv_papers (
                             id TEXT PRIMARY KEY,
@@ -50,6 +51,7 @@ class DatabaseManager:
         try:
             with psycopg.connect(self.conn_string) as conn:
                 with conn.cursor() as cur:
+                    cur.execute("SET TIME ZONE 'Asia/Shanghai'")
                     for item in data:
                         ai_data = item.get('AI', {})
                         try:

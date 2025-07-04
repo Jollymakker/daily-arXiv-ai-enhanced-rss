@@ -5,15 +5,11 @@ import sys
 import dotenv
 import argparse
 
-import openai # 使用openai库
-# import langchain_core.exceptions # 移除langchain异常导入
-# from langchain_community.chat_models import ChatOpenAI # 移除langchain模型导入
-# from langchain.prompts import (
-#   ChatPromptTemplate,
-#   SystemMessagePromptTemplate,
-#   HumanMessagePromptTemplate,
-# ) # 移除langchain提示模板导入
+import openai
+
 from ai.structure import Structure
+from concurrent.futures import ThreadPoolExecutor
+
 if os.path.exists('.env'):
     dotenv.load_dotenv()
 
@@ -22,6 +18,31 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, required=True, help="jsonline data file")
     return parser.parse_args()
+
+def _enhance_single_item(d, llm_client, messages_template, language, model_name):
+    # 格式化用户内容
+    user_content = messages_template[1]["content"].format(language=language, content=d['summary'])
+    messages = [
+        messages_template[0],
+        {"role": "user", "content": user_content}
+    ]
+    try:
+        response = llm_client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            response_format={"type": "json_object"} # 明确请求JSON输出
+        )
+        # 手动解析响应为Structure对象
+        response_content = response.choices[0].message.content
+        # 移除Markdown代码块标记
+        if response_content.startswith("```json") and response_content.endswith("```"):
+            response_content = response_content[len("```json\n"):-len("```")]
+        
+        parsed_response = Structure.model_validate_json(response_content)
+        d['AI'] = parsed_response.model_dump()
+    except Exception as e: #
+        print(f"{d['id']} has an error: {e}", file=sys.stderr)
+    return d
 
 def run_enhancement_process(data: list):
     model_name = os.environ.get("MODEL_NAME", 'deepseek-r1')
@@ -48,31 +69,7 @@ def run_enhancement_process(data: list):
         {"role": "user", "content": template_content}
     ]
 
-    enhanced_data = []
-    for idx, d in enumerate(data):
-        # 格式化用户内容
-        user_content = messages_template[1]["content"].format(language=language, content=d['summary'])
-        messages = [
-            messages_template[0],
-            {"role": "user", "content": user_content}
-        ]
-        try:
-            response = llm_client.chat.completions.create(
-                model=model_name,
-                messages=messages,
-                response_format={"type": "json_object"} # 明确请求JSON输出
-            )
-            # 手动解析响应为Structure对象
-            response_content = response.choices[0].message.content
-            # 移除Markdown代码块标记
-            if response_content.startswith("```json") and response_content.endswith("```"):
-                response_content = response_content[len("```json\n"):-len("```")]
-            
-            parsed_response = Structure.model_validate_json(response_content)
-            d['AI'] = parsed_response.model_dump()
-            enhanced_data.append(d)
-        except Exception as e: #
-            print(f"{d['id']} has an error: {e}", file=sys.stderr)
-
-        print(f"Finished {idx+1}/{len(data)}", file=sys.stderr)
+    # 使用ThreadPoolExecutor并行处理
+    with ThreadPoolExecutor(max_workers=50) as executor: # 可以调整max_workers
+        enhanced_data = list(executor.map(lambda d: _enhance_single_item(d, llm_client, messages_template, language, model_name), data))
     return enhanced_data
