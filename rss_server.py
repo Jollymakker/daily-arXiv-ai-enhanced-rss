@@ -104,9 +104,30 @@ def load_items(date_str: str, category: Optional[str] = None) -> list:
         # 如果数据库中没有数据，也将其缓存为空列表以避免重复查询
         memory_cache.set(date_str, [])
         return []
-    
-    # 将获取的数据存入缓存
-    memory_cache.set(date_str, items)
+
+    # 检查哪些条目没有AI数据
+    need_enhance = []
+    for item in items:
+        ai = item.get('AI', {})
+        # 判断AI字段是否全为空或全为None
+        if not ai or all(v is None or v == '' for v in ai.values()):
+            need_enhance.append(item)
+    # 如果有需要增强的条目，进行AI增强并更新数据库和缓存
+    if need_enhance:
+        from ai.enhance import run_enhancement_process
+        enhanced = run_enhancement_process(need_enhance)
+        # 用增强后的数据替换原有条目
+        id2enh = {d['id']: d for d in enhanced}
+        for idx, item in enumerate(items):
+            if item['id'] in id2enh:
+                items[idx] = id2enh[item['id']]
+        # 更新数据库
+        db_manager.insert_data(enhanced)
+        # 更新缓存
+        memory_cache.set(date_str, items)
+    else:
+        # 将获取的数据存入缓存
+        memory_cache.set(date_str, items)
     return items
 
 def get_recent_dates(n=30):
@@ -134,7 +155,6 @@ def generate_rss_xml(cat: Optional[str], day: int, keys: Optional[str] = None):
     # 根据关键字过滤
     if keys:
         keywords = [k.strip().lower() for k in keys.split(',') if k.strip()]
-        print(keywords)
         if keywords:
             items = [item for item in items if 
                      item.get('summary') and any(keyword in item['summary'].lower() for keyword in keywords)]
