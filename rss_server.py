@@ -127,11 +127,18 @@ def load_items_multi(dates):
     return all_items
 
 @lru_cache(maxsize=128)
-def generate_rss_xml(cat: Optional[str], day: int):
+def generate_rss_xml(cat: Optional[str], day: int, keys: Optional[str] = None):
     dates = get_recent_dates(day)
     items = load_items_multi(dates)
         
-    
+    # 根据关键字过滤
+    if keys:
+        keywords = [k.strip().lower() for k in keys.split(',') if k.strip()]
+        print(keywords)
+        if keywords:
+            items = [item for item in items if 
+                     item.get('summary') and any(keyword in item['summary'].lower() for keyword in keywords)]
+
     if not items: # 如果没有获取到任何项目，抛出HTTP 404
         raise HTTPException(status_code=404, detail=f'未找到最近{day}天的论文。')
 
@@ -180,12 +187,13 @@ def generate_rss_xml(cat: Optional[str], day: int):
 
 @app.get('/feed', summary="获取统一的RSS源（按天或按分类）", response_description="RSS XML内容")
 def rss_unified(day: int = Query(1, description="获取最近的天数"), 
-                cat: Optional[str] = Query(None, description="按分类筛选")):
+                cat: Optional[str] = Query(None, description="按分类筛选"),
+                keys: Optional[str] = Query(None, description="按关键字过滤摘要")):
     allowed_categories = get_allowed_categories()
     if cat and cat not in allowed_categories:
         raise HTTPException(status_code=404, detail=f"不支持的分类: {cat}. 可用分类: {', '.join(allowed_categories) if allowed_categories else '无'}")
     try:
-        xml = generate_rss_xml(cat, day)
+        xml = generate_rss_xml(cat, day, keys)
         return Response(content=xml, media_type="application/xml")
     except HTTPException as e:
         raise e # 重新抛出HTTPException
